@@ -1,0 +1,78 @@
+baseURL = 'https://la2kta.net/'
+languageCode = 'en-us'
+theme = 'PaperMod'
+title = 'LA2KTA.net'
+author = 'Eirik Haustveit'
+relativeURLs = true
+copyright = 'Copyright © 2025, Eirik Haustveit and other contributors; some rights reserved'
+#DefaultContentLanguage = "en"
+#defaultContentLanguageInSubdir = true
+
+[params]
+    subtitle = 'Electronics and more'
+    [params.contact]
+    email = 'not-public-no-spam@la2kta.net'
+    phone = '81549300'
+    [params.homeInfoParams]
+	title = 'Electronics and more'
+	content = 'Documenting some of my adventures in electronics and other fields of engineering'
+    [params.socialIcons]
+	[params.socialIcons.github]
+	   url = 'https://github.com/gbThreepwood'
+	
+
+[markup.goldmark.renderer]
+  unsafe = true
+
+
+[menu]
+
+  [[menu.main]]
+    identifier = "home"
+    name = "Home"
+    url = "/"
+    weight = 1
+  [[menu.main]]
+    identifier = "posts"
+    name = "Posts"
+    url = "/posts/"
+    weight = 6
+  [[menu.main]]
+    identifier = "articles"
+    name = "Articles"
+    url = "/articles/"
+    weight = 7
+  [[menu.main]]
+    identifier = "projects"
+    name = "Projects"
+    url = "/projects/"
+    weight = 8
+  [[menu.main]]
+    identifier = "resources"
+    name = "Resources"
+    url = "/resources/"
+    weight = 9
+  [[menu.main]]
+    identifier = "about"
+    name = "About"
+    url = "/about/"
+    weight = 10
+
+[privacy]
+
+  [privacy.vimeo]
+    disabled = false
+    simple = true
+
+  [privacy.twitter]
+    disabled = false
+    enableDNT = true
+    simple = true
+
+  [privacy.instagram]
+    disabled = false
+    simple = true
+
+  [privacy.youtube]
+    disabled = false
+    privacyEnhanced = true

@@ -1,0 +1,93 @@
+#+hugo_base_dir: ../
+
+#+seq_todo: TODO DRAFT DONE
+#+author: Eirik Haustveit
+
+* DONE My first post from org-mode                          :tag1:@category1:
+CLOSED: [2025-06-07 la. 23:02]
+:PROPERTIES:
+:EXPORT_FILE_NAME: first-orgmode-post
+:END:
+
+This is my first test of posting from Org-mode. It is likely that I will continue to write most of my content from here, as I tend to prefer Org-mode over Markdown.
+
+* DONE Org-mode feature testing                             :tag2:@category1:
+CLOSED: [2025-06-07 la. 23:42]
+:PROPERTIES:
+:EXPORT_FILE_NAME: second-orgmode-post
+:END:
+
+This is the second org-mode test to see how various org-mode features looks with different Hugo templates.
+
+** DONE Lists and checkboxes                                      :@feature:
+CLOSED: [2025-06-08 su. 15:35]
+
+- [ ] Dette er ein test
+- [X] Dette er ein test
+- [X] Dette er ein test
+
+** Pictures
+
+** Tables
+
+[[info:org#Column formulas][org#Column formulas]]
+
+|  A |  B |  c |
+|  2 |  3 |  4 |
+|  5 | 10 | 21 |
+| 33 | 43 | 11 |
+|    |    |    |
+|----+----+----|
+
+*** Spreadsheet
+
+*** Plotting
+
+** Code listings
+
+This is a code listing for C:
+
+#+begin_src C
+  #include <stdio.h>
+  
+  int main(){
+    printf("test");
+  }
+#+end_src
+
+#+RESULTS:
+: test
+
+** PlantUML
+
+#+begin_src plantuml :file images/demo-uml.png
+  !theme spacelab
+  a -> b
+  b -> c
+#+end_src
+
+
+#+begin_src plantuml :results verbatim
+Bob -> Alice : Hello World!
+#+end_src
+
+** Citation
+
+** Math
+Inline math \(R = \frac{U}{I}\)
+
+\[f(x) = \int_{2}^{4} x^{4}+2x^{3}\]
+
+\begin{equation}
+\label{eq:1}
+C = W\log_{2} (1+\mathrm{SNR})
+\end{equation}
+
+
+* DONE Transformer core hysteresis measurement              :tag1:@category1:
+CLOSED: [2025-06-08 su. 03:08]
+:PROPERTIES:
+:EXPORT_FILE_NAME: transformer-hysteresis-meas
+:END:
+
+Transformers and inductors often require some form of magnetic material to improve inductance or coupling between windings.
