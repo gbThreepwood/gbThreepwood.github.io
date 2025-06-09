@@ -9,6 +9,7 @@ copyright = 'Copyright © 2025, Eirik Haustveit and other contributors; some rig
 #defaultContentLanguageInSubdir = true
 
 [params]
+    math = true
     subtitle = 'Electronics and more'
     [params.contact]
     email = 'not-public-no-spam@la2kta.net'
@@ -21,9 +22,22 @@ copyright = 'Copyright © 2025, Eirik Haustveit and other contributors; some rig
 	   url = 'https://github.com/gbThreepwood'
 	
 
-[markup.goldmark.renderer]
-  unsafe = true
+[markup]
+  [markup.goldmark]
+    [markup.goldmark.extensions]
+      [markup.goldmark.extensions.passthrough]
+        enable = true
+        [markup.goldmark.extensions.passthrough.delimiters]
+          block = [['\[', '\]'], ['$$', '$$']]
+          inline = [['\(', '\)']]
 
+      [markup.goldmark.renderer]
+	  unsafe = true
+
+[taxonomies]
+  author = "authors"
+  tag = "tags"
+  category = "categories"
 
 [menu]
 

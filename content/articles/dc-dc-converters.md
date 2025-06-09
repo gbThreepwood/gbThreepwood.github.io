@@ -8,6 +8,12 @@ DC/DC converters are electronic devices which converts a DC voltage and current 
 
 ## Buck converter
 
+The output voltage is thus given by:
+
+\[
+V_o = D \cdot V_d
+\]
+
 ## Boost converter
 
 ## Buck-boost converter

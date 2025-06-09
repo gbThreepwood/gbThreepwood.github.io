@@ -1,0 +1,6 @@
+<h1>Authors</h1>
+<ul>
+{% raw %}{{ range .Data.Pages }}{% endraw %}
+  <li><a href="{% raw %}{{ .Permalink }}{% endraw %}">{% raw %}{{ .Params.name }}{% endraw %}</a></li>
+{% raw %}{{ end }}{% endraw %}
+</ul>

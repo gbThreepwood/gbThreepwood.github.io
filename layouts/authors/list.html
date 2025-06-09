@@ -1,0 +1,19 @@
+<h1>{% raw %}{{ .Params.name }}{% endraw %}</h1>
+<img src="{% raw %}{{ .Params.photo }}{% endraw %}" alt=""/>
+
+<h2>Bio</h2>
+{% raw %}{{ .Content }}{% endraw %}
+{% raw %}{{ with .Params.twitter }}{% endraw %}
+  <p>
+    <a href="https://twitter.com/{% raw %}{{ substr . 1 }}{% endraw %}">
+      Follow {% raw %}{{ $.Params.name }}{% endraw %} on Twitter
+    </a>
+  </p>
+{% raw %}{{ end }}{% endraw %}
+
+<h2>Articles</h2>
+<ul>
+{% raw %}{{ range .Data.Pages }}{% endraw %}
+    <li><a href="{% raw %}{{ .Permalink }}{% endraw %}">{% raw %}{{ .Title }}{% endraw %}</a></li>
+{% raw %}{{ end }}{% endraw %}
+</ul>

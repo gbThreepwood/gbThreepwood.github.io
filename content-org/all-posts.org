@@ -28,20 +28,73 @@ CLOSED: [2025-06-08 su. 15:35]
 
 ** Pictures
 
+** Text formatting
+
+- We can have *bold* text
+- Also /italic/
+- And =monospace=
+- For key bindings ~C-c~
+- And when you +regret something+
+- And when _someting is really important_
+
 ** Tables
 
 [[info:org#Column formulas][org#Column formulas]]
 
-|  A |  B |  c |
+#+caption: First demo table
+|  A |  B |  C |
 |  2 |  3 |  4 |
 |  5 | 10 | 21 |
 | 33 | 43 | 11 |
 |    |    |    |
 |----+----+----|
 
+#+caption: Table with verbatim CSS
+#+attr_html: :class zebra-striping sane-table
+|---+---|
+| a | b |
+| b | s |
+|   |   |
+
 *** Spreadsheet
 
+The tables in org-mode are a spreadsheet.
+
+| Candidate |  A |  B |   C |  D |  Mean | Std. dev |  RMS |
+|-----------+----+----+-----+----+-------+----------+------|
+|         1 | 50 | 25 | 100 | 10 | 46.25 |     39.4 | 57.5 |
+|         2 | 75 | 25 |  75 | 50 | 56.25 |     23.9 | 59.9 |
+|         3 | 50 | 75 |  60 | 25 |  52.5 |     21.0 | 55.6 |
+#+TBLFM: $6=vmean($2..$5)
+#+TBLFM: $7=vsdev($2..$5);%.1f
+#+TBLFM: $8=rms($2..$5);%.1f
+
 *** Plotting
+
+Org-mode supports plotting through gnuplot.
+
+#+PLOT: title:"Citas" ind:1 deps:(3) type:2d with:histograms set:"yrange [0:]"
+     | Sede      | Max cites | H-index |
+     |-----------+-----------+---------|
+     | Chile     |    257.72 |   21.39 |
+     | Leeds     |    165.77 |   19.68 |
+     | Sao Paolo |     71.00 |   11.50 |
+     | Stockholm |    134.19 |   14.33 |
+     | Morelia   |    257.56 |   17.67 |
+
+
+#+tblname: data-table
+| x | y1 | y2 |
+|---+----+----|
+| 0 |  3 |  6 |
+| 1 |  4 |  7 |
+| 2 |  5 |  8 |
+
+# #+begin_src gnuplot :var data=data-table :file output.png
+#   f(x) = x**2
+#   plot f(x)
+# #+end_src
+
 
 ** Code listings
 
@@ -51,23 +104,23 @@ This is a code listing for C:
   #include <stdio.h>
   
   int main(){
-    printf("test");
+    printf("Dette er ein test");
   }
 #+end_src
 
 #+RESULTS:
-: test
+: Dette er ein test
 
 ** PlantUML
 
-#+begin_src plantuml :file images/demo-uml.png
+#+begin_src c :file images/demo-uml.png
   !theme spacelab
   a -> b
   b -> c
 #+end_src
 
 
-#+begin_src plantuml :results verbatim
+#+begin_src c :results verbatim
 Bob -> Alice : Hello World!
 #+end_src
 
