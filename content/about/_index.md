@@ -4,13 +4,13 @@ layout : "about"
 title: "About me"
 ---
 
-My name is Eirik Haustveit and this is my weblog (blog) of some of my electronic adventures. This website is still in early development and there is not too much to be found here, you should come back later.
+![Me](/images/me.jpg)
 
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. 
+My name is Eirik Haustveit and this is my weblog (blog) of some of my electronic adventures. I find most fields of engineering and science to be facinating, but I have a particular interest in electrical and electronic engineering. Especially power electronics, radio communication, and embedded systems where software meets hardware. But really anything electrical you could throw at me, I am sure I would be intrigued by it.
 
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. 
+My amateur radio callsign is (as you might have guessed) LA2KTA. I am not terribly active on the air, but I do experiment with various radio equipment.
 
-Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text ever since the 1500s, when an unknown printer took a galley of type and scrambled it to make a type specimen book. 
+This website is still in early development and there is not too much to be found here. My plan is to write about some of my projects when I feel inspired.
 
 ##### Social Media
 - [github](https://github.com/gbThreepwood/)
