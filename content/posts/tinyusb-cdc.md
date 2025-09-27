@@ -93,6 +93,42 @@ Furthermore I added:
 
 It is of course possible to merge all the code in to a single file, but I will not do that.
 
+The full project tree looks like this:
+
+```nil
+.
+├── include
+│   ├── helper_functions.h
+│   ├── README
+│   └── tusb_config.h
+├── lib
+│   ├── README
+│   └── tinyusb
+│       ├── CODE_OF_CONDUCT.rst
+│       ├── CONTRIBUTORS.rst
+│       ├── docs
+│       ├── examples
+│       ├── hw
+│       ├── lib
+│       ├── library.json
+│       ├── LICENSE
+│       ├── pkg.yml
+│       ├── README.rst
+│       ├── repository.yml
+│       ├── SConscript
+│       ├── src
+│       ├── test
+│       ├── tools
+│       └── version.yml
+├── platformio.ini
+├── src
+│   ├── helper_functions.c
+│   ├── main.c
+│   └── usb_descriptors.c
+└── test
+    └── README
+```
+
 
 ### Helper functions {#helper-functions}
 

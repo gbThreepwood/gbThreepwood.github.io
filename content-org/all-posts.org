@@ -963,6 +963,7 @@ board = bluepill_f103c6
 framework = stm32cube
 #+END_SRC
 
+
 To flash the program to the microcontroller I used the stlink onboard a random Nucleo board I had lying around.
 
 TODO: Add picture
@@ -984,6 +985,42 @@ Furthermore I added:
 - helper_functions.c
 
 It is of course possible to merge all the code in to a single file, but I will not do that.
+
+The project tree looks like this (the deeper layers of the tinyUSB directory tree are not shown):
+
+#+BEGIN_SRC
+.
+├── include
+│   ├── helper_functions.h
+│   ├── README
+│   └── tusb_config.h
+├── lib
+│   ├── README
+│   └── tinyusb
+│       ├── CODE_OF_CONDUCT.rst
+│       ├── CONTRIBUTORS.rst
+│       ├── docs
+│       ├── examples
+│       ├── hw
+│       ├── lib
+│       ├── library.json
+│       ├── LICENSE
+│       ├── pkg.yml
+│       ├── README.rst
+│       ├── repository.yml
+│       ├── SConscript
+│       ├── src
+│       ├── test
+│       ├── tools
+│       └── version.yml
+├── platformio.ini
+├── src
+│   ├── helper_functions.c
+│   ├── main.c
+│   └── usb_descriptors.c
+└── test
+    └── README
+#+END_SRC
 
 *** Helper functions
 
@@ -1714,3 +1751,11 @@ sLength: 1
 t
 #+END_SRC
 
+
+
+* TODO DALI bus interface                                   :tag1:@category1:
+:PROPERTIES:
+:EXPORT_FILE_NAME: dali-bus-interface
+:END:
+
+Digital Addressable Lighting Interface (DALI)
