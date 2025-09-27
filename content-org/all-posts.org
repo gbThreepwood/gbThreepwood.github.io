@@ -144,3 +144,1573 @@ CLOSED: [2025-06-08 su. 03:08]
 :END:
 
 Transformers and inductors often require some form of magnetic material to improve inductance or coupling between windings.
+
+
+
+* TODO Teletext service                                     :tag1:@category1:
+CLOSED: [2025-06-08 su. 03:08]
+:PROPERTIES:
+:EXPORT_FILE_NAME: teletext-service
+:END:
+
+Teletext (known as Tekst-TV in Norway) is a system which exploits the invisible vertical blanking interval in a video transmission to send additional digital data to be displayed on a TV if it supports decoding of such signals.
+
+The development of teletext started in UK in the early 1970s.
+
+In this post I will describe a rudimentary local teletext service I have configured to display the currently playing song from my MPD setup.
+
+** Software
+
+*** VBIT2
+
+https://github.com/peterkvt80/vbit2
+
+*** Raspi-teletext
+
+https://github.com/ali1234/raspi-teletext
+
+*** QTeletextMaker
+
+https://github.com/gkthemac/QTeletextMaker
+
+
+** Python script
+
+I have hacked together a simple python script which polls information from my MPD-setup, and generates a teletext page with information about which song is currently playing, and which one is next in line.
+
+I use the python-mpd2 library for interaction with MPD (https://python-mpd2.readthedocs.io/en/latest/index.html).
+In the future I might look in to pyfax (https://github.com/mscroggs/pyfax) for generation of the TTI-files.
+
+#+BEGIN_SRC python
+from mpd import MPDClient
+
+client = MPDClient()               # create client object
+client.timeout = 10                # network timeout in seconds (floats allowed), default: None
+client.idletimeout = None          # timeout for fetching the result of the idle command is handled seperately, default: None
+client.connect("abnaxus.local", 6600)  # connect to localhost:6600
+print(client.mpd_version)          # print the MPD version
+
+print("Updating MPD info teletext page")
+
+#print(client.find("any", "house")) # print result of the command "find any house"
+
+#client.iterate = True
+#for song in client.playlistinfo():
+#    print(song["file"])
+
+TTI_FILE = "P200.tti"
+
+with open(TTI_FILE, 'r') as file:
+    # read a list of lines into data
+    data = file.readlines()
+
+current_song = client.currentsong()
+#print(f"Currently playing: {current_song["artist"]} - {current_song["title"]}")
+
+data[9] = f"OL,5,Artist: {current_song['artist']}\n"
+data[10] = f"OL,6,Tittel: {current_song['title']}\n"
+
+mpd_status = client.status()
+
+nextsong_number = mpd_status["nextsong"]
+
+next_song_info = client.playlistinfo(nextsong_number)
+
+data[12] = f"OL,10,Artist: {next_song_info[0]['artist']}\n"
+data[13] = f"OL,11,Tittel: {next_song_info[0]['title']}\n"
+
+if mpd_status["state"] == "pause":
+    data[14] = "OL,20,Status: \x1BH\x1BAPause\n"
+elif mpd_status["state"] == "play":
+    data[14] = "OL,20,Status: \x1BBSpelar\n"
+
+
+with open(TTI_FILE, 'w') as file:
+    file.writelines(data)
+
+client.close()                     # send the close command
+client.disconnect()
+#+END_SRC
+
+*** Running the script
+
+For simplicity I wanted to run the script using =cron=, but I also want it to refresh at less than 1 minute intervals. The solution was to use the following runner script:
+
+#+BEGIN_SRC bash
+#!/bin/bash
+cd "$(dirname "$0")"
+
+i=0
+
+while [ $i -lt 12 ]; do # 12 five-second intervals in 1 minute
+  /home/eirik/teletext/la2kta_teletext/mpdenv/bin/python mpd_teletext.py
+  sleep 5
+  i=$(( i + 1 ))
+done
+#+END_SRC
+
+The =python-mpd2= library is installed in a virtual environment, hence the long explicit path to the python interpreter.
+
+
+* TODO Private GSM base station                             :tag1:@category1:
+CLOSED: [2025-06-08 su. 03:08]
+:PROPERTIES:
+:EXPORT_FILE_NAME: gsm-base-station
+:END:
+
+Global System for Mobile Communications (GSM), also known as 2G is a system for mobile (cell-phone) communication. It is concidered the second generation communication system, and in Norway it replaced Nordisk mobiltelefonsystem (NMT).
+
+The development of the system started in 1982, and it was formally standardized in 1989. The worlds first phone call on GSM was conducted in 1991, and it was first made available in Norway by NetCom in 1993.
+
+The network operators in Norway have decided to shut down the network. Although GSM popularity has fallen in favour of 3G/4G and 5G solutions, this process is a bit premature in my opinion. I do not blame the operators, they will of cource always do what they can to maximize profit (by saving money in this case), but it will not be the first time norwegian politicians fail to enforce companies to maintain the operation of important infrastructure (Loran-C and FM radio brodcast are two other examples).
+
+I do not presonally need or use GSM for anything anymore. Still I do own a few old cell-phones, and a GSM-modem which I relatively recently tried out just for fun, and I think it could be fun to use for some more experiments. Furthermore installing and configuring a GSM-base station should be a great learning experience for anyone interested in mobile communication.
+
+It should be noted that it is illegal to transmit on frequencies for which you do not have a licence, and the GSM frequencies (900 MHz band, and 1800 MHz-band) likely fall in to that category. Unfortunately you can not opt to use other frequencies since they would require custom mobile phones which probably do not exist. For experimenting you have to take the necessary means to ensure you do not radiate your signals out in to the public.
+
+** Hardware
+
+*** Base station
+
+
+
+** SIM-card writer
+
+
+
+You do not strictly need SIM-cards for GSM if you are willing to run the network without security, but it is not always obvious how you should configure your phone. If you have access to a writable SIM-card I would recommend that you try to use it, but even if you don't there is still a possibility that you can make this work.
+
+For communication with the SIM-card reader/writer I use pySim (https://osmocom.org/projects/pysim/wiki), or more specifically the interactive pySim-Shell.
+
+#+BEGIN_SRC
+$ pcsc_scan
+PC/SC device scanner
+V 1.7.3 (c) 2001-2024, Ludovic Rousseau <ludovic.rousseau@free.fr>
+Using reader plug'n play mechanism
+Scanning present readers...
+0: Identiv SCR35xx USB Smart Card Reader [CCID Interface] (35122024082724) 00 00
+ 
+Wed Jul  9 23:50:45 2025
+ Reader 0: Identiv SCR35xx USB Smart Card Reader [CCID Interface] (35122024082724) 00 00
+  Event number: 2
+  Card state: Card removed, 
+   
+Wed Jul  9 23:50:48 2025
+ Reader 0: Identiv SCR35xx USB Smart Card Reader [CCID Interface] (35122024082724) 00 00
+  Event number: 3
+  Card state: Card inserted, 
+  ATR: 3B 9F 94 80 1F C7 80 31 E0 73 FE 21 13 57 86 81 09 86 98 62 18 80
+
+ATR: 3B 9F 94 80 1F C7 80 31 E0 73 FE 21 13 57 86 81 09 86 98 62 18 80
++ TS = 3B --> Direct Convention
++ T0 = 9F, Y(1): 1001, K: 15 (historical bytes)
+  TA(1) = 94 --> Fi=512, Di=8, 64 cycles/ETU
+    62500 bits/s at 4 MHz, fMax for Fi = 5 MHz => 78125 bits/s
+  TD(1) = 80 --> Y(i+1) = 1000, Protocol T = 0 
+-----
+  TD(2) = 1F --> Y(i+1) = 0001, Protocol T = 15 - Global interface bytes following 
+-----
+  TA(3) = C7 --> Clock stop: no preference - Class accepted by the card: (3G) A 5V B 3V C 1.8V 
++ Historical bytes: 80 31 E0 73 FE 21 13 57 86 81 09 86 98 62 18
+  Category indicator byte: 80 (compact TLV data object)
+    Tag: 3, len: 1 (card service data byte)
+      Card service data byte: E0
+        - Application selection: by full DF name
+        - Application selection: by partial DF name
+        - BER-TLV data objects available in EF.DIR
+        - EF.DIR and EF.ATR access services: by GET RECORD(s) command
+        - Card with MF
+    Tag: 7, len: 3 (card capabilities)
+      Selection methods: FE
+        - DF selection by full DF name
+        - DF selection by partial DF name
+        - DF selection by path
+        - DF selection by file identifier
+        - Implicit DF selection
+        - Short EF identifier supported
+        - Record number supported
+      Data coding byte: 21
+        - Behaviour of write functions: proprietary
+        - Value 'FF' for the first byte of BER-TLV tag fields: invalid
+        - Data unit in quartets: 2
+      Command chaining, length fields and logical channels: 13
+        - Logical channel number assignment: by the card
+        - Maximum number of logical channels: 4
+    Tag: 5, len: 7 (card issuer's data)
+      Card issuer data: 86 81 09 86 98 62 18
++ TCK = 80 (correct checksum)
+
+Possibly identified card (using /usr/share/pcsc/smartcard_list.txt):
+3B 9F 94 80 1F C7 80 31 E0 73 FE 21 13 57 86 81 09 86 98 62 18 80
+	Oyeitimes 5G ISIM R16 (Telecommunication)
+	https://www.oyeitimes.com/detail.php?id=535&ids=565&idt=&ide=&dd=1410
+#+END_SRC
+
+The interactive pySim shell is started with the command =./pySim-shell.py -p 0=. The argument =-p 0= tells pySim to use PCSC reader number 0. This is a advanced tool which can do a lot more than the basic GSM configuration we will perform here.
+
+#+BEGIN_SRC
+$ ./pySim-shell.py -p 0
+Using reader PCSC[Identiv SCR35xx USB Smart Card Reader [CCID Interface] (35122024082724) 00 00]
+Waiting for card...
+Info: Card is of type: UICC
+Detected UICC Add-on "SIM"
+Detected UICC Add-on "GSM-R"
+AIDs on card:
+ USIM: a0000000871002ffffffff8903050001 (EF.DIR)
+ ISIM: a0000000871004ff49ffff89081500ff (EF.DIR)
+ ARA-M: a00000015141434c00
+ HPSIM: a000000087100a
+ USIM-non-IMSI: a000000087100b
+Welcome to pySim-shell!
+(C) 2021-2023 by Harald Welte, sysmocom - s.f.m.c. GmbH and contributors
+Online manual available at https://downloads.osmocom.org/docs/pysim/master/html/shell.html 
+pySIM-shell (00:MF)> 
+#+END_SRC
+
+
+#+BEGIN_SRC
+pySIM-shell (00:MF)> dir
+MF
+3f00
+ .                  ADF.USIM           DF.TELECOM         EF.PL              
+ ADF.ARA-M          ADF.USIM-non-IMSI  EF.ARR             EF.UMPC            
+ ADF.HPSIM          DF.EIRENE          EF.DIR             MF                 
+ ADF.ISIM           DF.GSM             EF.ICCID           
+15 files
+pySIM-shell (00:MF)> 
+#+END_SRC
+
+*** Configuring a SIM for a open network
+
+In order to write to the card it is necessary to authenticate using the admin (ADM) number. This is a code similar to the PIN and PUK code, but one which allows modification of the card contents. You will not be able to do this on a regular SIM, only those which are sold as writable will be provided with the ADM.
+
+#+BEGIN_SRC
+read_binary
+089990747151640649
+#+END_SRC
+
+#+BEGIN_SRC
+pySIM-shell (00:MF/ADF.USIM/EF.IMSI)> update_binary 089990747151640648
+EXCEPTION of type 'SwMatchError' occurred with message: SW match failed! Expected 9000 and got 6982: Command not allowed - Security status not satisfied
+To enable full traceback, run the following command: 'set debug true'
+pySIM-shell (00:MF/ADF.USIM/EF.IMSI)> 
+#+END_SRC
+
+For my SIM-card the default ADM code is =3838383838383838= in HEX. It is changable so I do not have to worry about publishing it here.
+
+#+BEGIN_SRC
+pySIM-shell (00:MF/ADF.USIM/EF.IMSI)> verify_adm --pin-is-hex 3838383838383838
+pySIM-shell (00:MF/ADF.USIM/EF.IMSI)# 
+#+END_SRC
+
+After entry the prompt changes from =>= to =#=, indicating admin access.
+
+The MCC (mobile country code) and MNC (mobile network code) needs to be set to the same value as you are using for your base station. I went with MCC of 242 for Norway, and MNC of 64 just randomly as it is not in use with any of the operators in Norway. MCC code 999 is reserved for private networks and might be a better choice.
+
+
+The international mobile subscriber identity (IMSI) needs to be configured and you need to add the same number as a subscriber in the base station. The first digits should be the MCC followed by the MNC.
+
+#+BEGIN_SRC
+pySIM-shell (00:MF/DF.GSM/EF.IMSI)# update_binary_decoded '{"imsi": "242641718154930"}'
+pySIM-shell (00:MF/DF.GSM/EF.IMSI)# read_binary_decoded
+{
+    "imsi": "242641718154930"
+}
+#+END_SRC
+
+Public land mobile network (PLMN) settings must be correct to avoid the mobile phone thinking that it is roaming. If the phone thinks it is roaming it might turn off data unless you enable it explicitly. In practice it should be sufficient that the IMSI is set up correctly with MCC and MNC at the beginning to make the phone understand that it is on it's home network.
+
+ICCID (Integrated Circuit Card Identifier)
+
+
+KI field (subscriber key)
+OP (operator code) or OPC (operator code derived)
+
+openssl rand 16 | xxd -p
+546bd2ba27b9648de9f08547f33ba1b8
+
+Mobile Station International Subscriber Directory Number (MSISDN)
+
+https://medium.com/@ali.pourbazargan/unlocking-the-secrets-of-sim-cards-authentication-encryption-and-beyond-4d7c8d8b3c58
+
+https://osmocom.org/projects/pysim/wiki/PySim-prog
+
+You might want to change the provider name in =00:MF/DF.GSM/EF.SPN=. This name shows up on the home screen of some phones.
+
+pySIM-shell (00:MF/DF.GSM/EF.SPN)> read_binary_decoded
+{
+    "rfu": 0,
+    "hide_in_oplmn": false,
+    "show_in_hplmn": false,
+    "spn": "Telenor"
+}
+
+On a old Nokia 6085 my SIM-card was refused because of some operator lock. I tried a random Telenor SIM-card (not the one which was originally used in the phone), and that was not refused. So I concluded that it would be sufficient to pretend to be Telenor for the card to work. I first tried to configure the SPN, but that did not work. Then I tried to configure the IMSI with the MCC and MNC for Telenor, and that worked.
+
+This can be problematic since I need my MNC to differ from any other providers within reception.
+
+** Software
+
+*** Osmocom
+
+The Open Source Mobile Communications (Osmocom) project is developing several different software and hardware components related to mobile communication. Among these there is a solution for a GSM base station.
+
+This is the solution I have decided to use for my personal GSM network.
+
+https://osmocom.org/
+
+They also offer cellular base station hardware solutions: https://www.sysmocom.de/products/bts/
+
+
+#+BEGIN_SRC
+$ telnet 127.0.0.1 4258
+Trying 127.0.0.1...
+Connected to 127.0.0.1.
+Escape character is '^]'.
+Welcome to the OsmoHLR VTY interface
+
+Copyright (C) 2016-2023 by Harald Welte, sysmocom s.f.m.c. GmbH
+License AGPLv3+: GNU AGPL version 3 or later <http://gnu.org/licenses/agpl-3.0.html>
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+OsmoHLR> 
+#+END_SRC
+
+
+
+
+*** OpenBTS and YateBTS
+
+OpenBTS (Open Base Transceiver Station) is allegedly the first free and open source implementation of the lower three layers of the GSM specification. It can function as a gateway allowing normal GSM phones to function as voice over IP (SIP) endpoints.
+
+https://github.com/RangeNetworks/dev
+
+
+YateBTS is a fork of OpenBTS which uses Yate (Yet Another Telephony Engine) for the control layers and interface to the outside network. It has been criticized for beeing too commercialized when compared to the open source philosophy of the original software.
+
+https://github.com/yatevoip/yatebts
+
+** Configuration
+
+* TODO Near field probe and standing waves                  :tag1:@category1:
+CLOSED: [2025-06-08 su. 03:08]
+:PROPERTIES:
+:EXPORT_FILE_NAME: near-field-probe
+:END:
+
+
+
+
+* TODO RF measurements and Smith Charts                     :tag1:@category1:
+CLOSED: [2025-06-08 su. 03:08]
+:PROPERTIES:
+:EXPORT_FILE_NAME: rf-measurements
+:END:
+
+** Phase shift through a transmission line
+
+** Characteristic impedance
+
+The approximate equation for the characteristic impedance is given as:
+
+\begin{equation}
+Z_{0} \approx \frac{L}{C}
+\end{equation}
+
+** Measure coaxial cable length
+
+To be able to measure the physical length of the cable we need to know the velocity factor. Likevise if we know the physical length we can use this along with our measurements to calculate the velocity factor.
+
+
+** Transmission lines impedance transformation
+
+One complete trip around the Smith Chart equals a half wave length transmission line \(\frac{1}{2} \lambda\),
+
+A quarter wavelength line will thus rotate us half way around the Smith Chart. This will invert the impedance at one end of the line, when seen from the other end. The same holds true for any odd multiple of quarter wavelengts.
+
+In the extreme case a open line will appear as a short circuit, while a short circuit will appear as a open line at the given frequency where the line is \(\frac{1}{4}\lambda\) long.
+
+As an example, if you connect a resistance of 220 Ohm to the end of a 50 Ohm transmission line, the resistance seen at the other end of the line will become:
+
+\begin{equation}
+Z_{in} = \frac{Z_{0}^{2}}{Z_{out}} = \frac{50^{2}}{220} = 11.4 Ohm
+\end{equation}
+
+
+*** Characteristic impedance of transmission line
+
+The characteristic impedance of a transmission line depends upon the materials and the physical construction of the line. For a lossless line it is given by:
+
+\begin{equation}
+Z_{0} = \sqrt{\frac{L}{C}}
+\end{equation}
+
+A parallel-wire (ladder) line is superior to a coaxial cable when it comes to losses at relatively low frequencies (HF amateur band). Commercially it is offered in at least 300 Ohm, and 450 Ohm variants (e.g. DXE-LL300 and DXE-LL450), but it is relatively straigth forward to build custom wires with other characteristic impedances within reasonable limits.
+
+\begin{equation}
+Z_{0} = \frac{276}{\sqrt{k}} \log \left( \frac{d}{r} \right)
+\end{equation}
+
+
+For a coaxial cable the impedance is approximately given by:
+
+\begin{equation}
+Z_{0} = \frac{138}{\sqrt{k}} \log \left( \frac{d_{1}}{d_{2}} \right)
+\end{equation}
+
+For both types of transmission line it can be seen that the characteristic impedance will increase if the spacing between the wires increase. This is due to a reduction in line capacitance because of increased distance between the wires (electrodes), as well as an increase in inductance due to a reduction in the cancellation effect caused by the magnetic field from one wire interferring with the other which has current in the opposite direction.
+
+The velocity factor depends on the realative permittivity, and is given by:
+
+\begin{equation}
+VF = \frac{1}{\sqrt{\epsilon_{r}}}
+\end{equation}
+
+
+
+**** Example RG58
+
+The polyethylene dielectric has a relative permittivity \(\eplsilon_{r} = 2.3\).
+
+**** Example RG213
+
+
+**** Example ladder line
+
+I have a 450 Ohm ladder line for which am not sure about the manufacturer or brand.
+
+*** Voltage balun
+
+
+
+*** Complex reflection coefficient
+
+
+\begin{equation}
+\gamma = \frac{Z_{L} - Z_{0}}{Z_{L} + Z_{0}}
+\end{equation}
+
+
+The absolute value of the reflection coefficient has the symbol \(\rho\).
+
+
+*** Voltage standing wave ratio
+
+\begin{equation}
+VSWR = \frac{1 + \rho}{1 - \rho}
+\end{equation}
+
+
+
+*** Power reflection coefficient
+
+*** Return loss
+
+* TODO Wireless temperature and humidity sensor             :tag2:@category1:
+:PROPERTIES:
+:EXPORT_FILE_NAME: wireless-sensor-node 
+:END:
+
+There are several locations where I would like to monitor the temperature and humidity. And several not necessarily overlapping locations where I would like som form of display to read the data.
+
+Preferably I would like a single circuit board, which depending on the software can serve as display-module, sensor-module or both.
+
+After some initial research I have landed on the following components:
+
+*Sensor unit*
+
+- 3.3 V power supply
+- STM32 microcontroller
+- NRF24L01+ 2.4 GHz radio transceiver
+- SHT40 temperature and humidity sensor
+- BMP280 temperature and atmospheric pressure sensor (this one is not too important, just a bonus)
+- MAX485 RS485 interface. For any modbus units I should decide to support in the future.
+- 
+  
+*Display unit*
+
+- 59C2 analog voltmeter. This one will be decorated with a custom scale for temperature and humidity.
+- 2x16 LC-display with I2C communication to the microcontroller.
+- 7-segment display  
+- Rotary switch
+- Push buttons
+- Encoder with push button
+- Buzzer
+
+** Prototype
+
+For this project I decided to build the prototype on a stripboard (Veroboard). I wanted to prototype to be sufficiantly rugged to be used permanently so that I can use it even if I should decide that I only need one, and I don't order factory made circuit boards.
+
+
+
+* TODO Analog computation                                   :tag2:@category1:
+:PROPERTIES:
+:EXPORT_FILE_NAME: logarithmic-amplifiers 
+:END:
+
+In Norway I believe one of the most (mis)used buzz words by potiticians is "digitalisering". It translates to digitization, but I am not sure if the general (mis)understanding in the english speaking part of the world is the same. The politicians use it to refer to the increased use of computers and software in all parts of society. I am not neccecarily against this trend in every situation, but it should not be a goal in it's own right. Only when it provides a benefit over the tradisional approach should it be concidered.
+
+I also wish they had chosen a word which did not already had a very concrete formal meaning. Digitization is the process of converting information in to a digital computer readable format.
+
+Anyway I though it could be fun to explore the possibilities of the opposite process "analogisering" (analogization?), and in particular how to process information in the analog domain.
+
+** Analog addition and subtraction
+
+** Logaritmic and inverse logarithmic amplifier
+
+It is possible to exploit the characteristics of the diode to build an amplifier where the output is proportional to the logarithm of the input. This kind of amplifier has a lot of use cases as we shall see, far beyond only computing the logarithm.
+
+The Shockley diode equation is given as:
+
+\begin{equation}
+I_{D} = I_{S} \left( e^{\frac{V_{D}}{\eta V_{T}}} - 1 \right)
+\end{equation}
+
+Where:
+
+\begin{equation}
+V_{T} = \frac{k T}{q}
+\end{equation}
+
+We want to know the diode voltage \(V_D\):
+
+\begin{equation}
+I_{D} = I_{S} e^{\frac{V_{D}}{\eta V_{T}}} - I_{S}
+\end{equation}
+
+\begin{equation}
+\frac{I_{D} + I_{S}}{I_{S}} = e^{\frac{V_{D}}{\eta V_{T}}}
+\end{equation}
+
+\begin{equation}
+\ln \left( \frac{I_{D} + I_{S}}{I_{S}} \right) = \frac{V_{D}}{\eta V_{T}}
+\end{equation}
+
+\begin{equation}
+V_{D} = \eta V_{T} \ln \left( \frac{I_{D} + I_{S}}{I_{S}} \right)
+\end{equation}
+
+Using the rule:
+
+\begin{equation}
+\log\left(\frac{a}{b}\right) = \log(a) - \log(b)
+\end{equation}
+
+\begin{equation}
+V_{D} = \eta V_{T} \left( \ln(I_{D} + I_{S}) - \ln(I_{S}) \right)
+\end{equation}
+
+\begin{equation}
+V_{D} = \eta V_{T} \ln(I_{D} + I_{S}) - \eta V_{T} \ln(I_{S})
+\end{equation}
+
+The current \(I_S\) is typically very small, and we can thus simplify the equation to:
+
+\begin{equation}
+V_{D} = \eta V_{T} \ln(I_{D}) - \eta V_{T} \ln(I_{S})
+\end{equation}
+
+We can however not ignore the \(I_S\) in the second term, the logarithm of \(I_S\) will be a increasing negative number for smaller values of \(I_S\). Thus we have a sum of two logarithms, and since \(I_S\) is constant for a given device (and constant temperature) it means we have a constant offset in the output. This offset can be subtracted if necessary in a given circuit.
+
+Due to the ideallity factor \(\eta\) a diode connected transistor might be beneficial over a regular diode since it has \(\eta \approx 1\). In that case we get the following expression:
+
+\begin{equation}
+V_{D} = V_{T} \ln(I_{D}) + \text{constant}
+\end{equation}
+
+Where:
+
+\begin{equation}
+\text{constant} = V_{T} \ln(I_{S})
+\end{equation}
+
+*** Logarithm amplifier
+
+Due to the virtual ground between the inverting and non-inverting input of the operational amplifier, the input current is given by:
+
+\begin{equation}
+I_{in} = I_{D} = \frac{V_{in}}{R}
+\end{equation}
+
+The amplifier output voltage is thus given by:
+
+\begin{equation}
+V_{out} = -V_{D} = - \left(V_{T} \ln\left(\frac{V_{in}}{R}\right) + \text{constant}\right) = -V_{T} \ln\left(\frac{V_{in}}{R}\right) - \text{constant}
+\end{equation}
+
+*** Inverse logarithm amplifier
+
+For the inverse logarithm amplifier the input current is determined by the diode-connected transistor, and here the virtual ground ensures that the voltage across the diode equals the input voltage:
+
+
+\begin{equation}
+I_{D} = I_{S} \left( e^{\frac{V_{D}}{\eta V_{T}}} - 1 \right) = I_{S}e^{\frac{V_{D}}{\eta V_{T}}} - I_{S} = I_{S}e^{\frac{V_{in}}{\eta V_{T}}} - I_{S}
+\end{equation}
+
+The output voltage is scaled by the value of the feedback resistor:
+
+\begin{equation}
+V_{out} = -I_{D} R = - R \cdot I_{S}e^{\frac{V_{in}}{\eta V_{T}}} + R \cdot I_{S}
+\end{equation}
+
+
+*** Dealing with offset
+
+If we are using only a single log and antilog amplifier the offsets from the log amplifier can be cancelled out by the antilog-amplifier as long as the resistors have the same value, and the diodes (transistors) are matched and at the same temperature.
+
+In many cases though we would like to do some manipulation in the logarithm domain before converting back using the antilog. If using multiple log amplifiers for the input, the offsets for the additional amplifiers needs to be subtracted before we send the signal through the antilog. Due to the tolerances and temperature dependence of the offset, it is probably best to use an additional log amplifier with fixed one volt input to generate the offset voltage for subtraction.
+
+*** Diode linearity
+
+The diodes (or diode connected transistors) need to operate in a region where there is a linear relationship between the diode voltage, and the logarithm of the diode current. This is generally true for low voltages and currents, which is ensured by proper selection of resistors.
+
+
+** Temperature compensation
+
+
+
+** Analog math
+
+In addition to the obvious computation of natural logarithm, the properties of logarithms makes it possible to use our circuit to convert problems of multiplication and division in to addition and subtraction. Addition and subtraction is easily performed with operational amplifiers.
+
+\begin{equation}
+\log(a \cdot b) = \log(a) + \log(b)
+\end{equation}
+
+\begin{equation}
+\log\left(\frac{a}{b}\right) = \log(a) - \log(b)
+\end{equation}
+
+\begin{equation}
+\log\left( a^{b} \right) = b \cdot \log(a)
+\end{equation}
+
+The rules apply for any logarithmic base. Hence it does not matter exactly what base our circuit produces the results in, only that the inverse computation should be in the exact same base. In practice this means that the transistors needs to be matched.
+
+For example the multiplication \(34 \cdot 72 = 2448\) can also be performed in the following way:
+
+\begin{equation}
+\ln(34) = 3.5264
+\end{equation}
+
+\begin{equation}
+\ln(72) = 4.2767
+\end{equation}
+
+\begin{equation}
+e^{3.5264 + 4.2767} = 2448.2
+\end{equation}
+
+The result is not exact because the values of the logarithms of the two numbers are not exact.
+
+Exponentiation is performed using the third rule. E.g \(5^7 = 78.125\):
+
+\begin{equation}
+\ln(5) = 1.6094
+\end{equation}
+
+\begin{equation}
+e^{7 \cdot 1.6094} = 78.104
+\end{equation}
+
+But here we are using the product of two numbers \(7 \cdot 1.6094\), and that is not something which is easy to do directly. Instead we can do:
+
+\begin{equation}
+\ln(7) = 1.9459
+\end{equation}
+
+\begin{equation}
+\ln(\ln(5)) = \ln(1.6094) = 0.47586
+\end{equation}
+
+\begin{equation}
+e^{e^{1.9459 + 0.47586}} = 78.094
+\end{equation}
+
+
+
+
+The square root can also be determined. E.g. \(\sqrt{2} \approx 1.4142\):
+
+\begin{equation}
+\ln(2) = 0.69315
+\end{equation}
+
+\begin{equation}
+e^{0.5 \cdot 0.69315} = 1.4142
+\end{equation}
+
+A relatively straight forward way to implement this in practice is to compute the square of the output from a opamp, and then feed this result back to the inverting input of the opamp. The inverting and non-inverting inputs will be equal if the circuit is operating correctly, hence the output \(V_{out}\) needs to be such that \(V_{out}^2 = V_{in}\). Hence \(V_{out} = \sqrt(V_{in}\).
+
+Another option is to first compute the logarithm of the number for which you want the square root, and then multiply it by 0.5 by feeding it through a gain stage with gain of 0.5. Finally you feed the result through a inverse log amplifier.
+
+
+*** Square root
+
+The following circuit is my attempt at a circuit for analog square root computation. I am sure there are more elegant, more accurate, and higher bandwidth circuits out there. I just wanted something which works fairly good for DC for demonstration purposes.
+
+#+CAPTION: LTSpice model of the square root computation circuit
+#+NAME: fig:ltspice-square-root
+[[./images/ltspice_square_root_circuit.png]]
+
+The first opamp circuit on the top left computes the logarithm (with offset) of the input voltage (2 volts at the time of the screenshot). The orientation of the diode connected transistor means that the output voltage will be negative. The opamp circuit in the bottom left computes the logarithm of 1 volt to obtain the constant offset voltage from the logarithm amplifiers (because \(\ln(1) = 0\).
+
+To get the square root we use the logarithm rule:
+
+\begin{equation}
+\log\left( a^{b} \right) = b \cdot \log(a)
+\end{equation}
+
+We know that \(\sqrt{a} = a^{\frac{1}{2}}\), hence we can set \(b = 0.5\) and use multiplication instead of exponentiation. Multiplication by a constant is easily acheived by using a amplifier with a gain equal to the same constant. This is the job of the summing opamp in the center. The gain is \(-0.5\) for both inputs, hence we get \(-0.5 \cdot (offset + logarithm)\). Both input voltages (the outputs from the log amps) are negative, hence the output will be positive. 
+
+The final opamp circuit on the right computes the inverse logarithm. The transistor is oriented to operate at a positive input voltage, and thus the final square root output will be a negative voltage. If we want the final output voltage to be positive, we could flip all the diode connected transistors, and use negative input voltages.
+
+The transistors used in the simulation are the very common 2N3904, but in the real circuit it is preferable to use matched transistors in a integrated package.
+
+*** One over square root
+
+We can also obtain \(\frac{1}{\sqrt{a}}\) by exploiting the rule:
+
+\begin{equation}
+\log\left(\frac{a}{b}\right) = \log(a) - \log(b)
+\end{equation}
+
+#+CAPTION: LTSpice model of a one over square root computation
+#+NAME: fig:ltspice-one-over-square-root
+[[./images/ltspice_one_over_square_root_circuit.png]]
+
+The only difference compared to the previous circuit is that the summing amplifier in the center is replaced with an amplifier where the non-inverting input shifts the output by the level of \(-(ln(1) + offset)\). With 2 volt as an example, we want the output of the differential amplifier to be:
+
+\begin{equation}
+\ln(1) - 0.5\cdot \ln(2) + offset
+\end{equation}
+
+The output from the opamp is given by:
+
+\begin{equation}
+V_{out} = V_{+} - \frac{R_{f}}{R_{i}}\cdot(V_{i} - V_{+})
+\end{equation}
+
+Hence we subtract the offset, multiply the logarithm by 0.5, and subtract the result from the offset.
+
+** Computation of sine and cosine
+
+* DONE tinyUSB CDC UART interface                           :tag1:@category1:
+CLOSED: [2025-09-27 la. 21:42]
+:PROPERTIES:
+:EXPORT_FILE_NAME: tinyusb-cdc
+:END:
+
+In this article I will cover how to program a STM32f103C6 (https://www.st.com/en/microcontrollers-microprocessors/stm32f103c6.html) Bluepill board for use as a USB to serial port (UART) interface. The USB terminology for this kind of device is a communications device class (or USB CDC) device. These kind of interfaces have a lot of use cases, and by having native USB support in the microcontroller we can create multiple such interfaces, and even mix them with other things such as audio and have everything over a single USB cable.
+
+The STM32f103C6 might not be powerfull enough for audio (time will show), but I intend to experiment with a combination of CDC and audio (UAC2) in the future, as I am working on several projects where this would be useful.
+
+I will use the tinyUSB (https://github.com/hathach/tinyusb) library, which is a USB host and device stack for microcontrollers and other embedded systems. The documentation for the library is a bit deficient in my opinion, but there are a lot of good project examples in the repository.
+
+It is possible to run the example projects directly from within the repository. Although this can be nice if one wants to get up and running as quickly as possible, it obscures the details required to configure tinyUSB for a custom project.
+
+** Project configuration and initial tests
+
+I generally prefer a custom CMake configuration for larger projects, while PlatformIO is my preferred solution for smaller project to get started quickly. My first step was to make sure that I could blink the onboard LED on the bluepill using the following program. As always I avoid the STM32Cube IDE and HAL library at all costs, here I have used the Low Layer (LL) library.
+
+#+BEGIN_SRC c
+#include <stm32f1xx_ll_gpio.h>
+
+#include <stm32f1xx_ll_cortex.h>
+#include <stm32f1xx_ll_rcc.h>
+#include "stm32f1xx_ll_bus.h"
+
+#define BUILTIN_LED_PORT          GPIOC
+#define BUILTIN_LED_PIN           LL_GPIO_PIN_13
+
+void SysTick_Handler(void)
+{
+    static uint_fast32_t counter = 0;
+    counter++;
+
+    // 4 Hz blinking
+    if ((counter % 500) == 0)
+        LL_GPIO_TogglePin(BUILTIN_LED_PORT, BUILTIN_LED_PIN);
+
+}
+
+void init_gpio() {
+
+    LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
+    LL_GPIO_SetPinMode(BUILTIN_LED_PORT, BUILTIN_LED_PIN, LL_GPIO_MODE_OUTPUT);
+    LL_GPIO_SetPinOutputType(BUILTIN_LED_PORT, BUILTIN_LED_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+}
+
+int main(void) {
+    init_gpio();
+
+    // 1kHz ticks
+    SystemCoreClockUpdate();
+    SysTick_Config(SystemCoreClock / 1000);
+
+    while(1);
+
+    return 0;
+}
+#+END_SRC
+
+The /platformio.ini/ file looks like this:
+
+#+BEGIN_SRC ini
+[env:bluepill_f103c6]
+platform = ststm32
+board = bluepill_f103c6
+framework = stm32cube
+#+END_SRC
+
+To flash the program to the microcontroller I used the stlink onboard a random Nucleo board I had lying around.
+
+TODO: Add picture
+
+** Configure the project for tinyUSB
+
+Start by cloning or git submoduling the tinyUSB library to the /lib/ folder.
+
+In addition to our /main.c/ file any tinyUSB project should typically have a few more files. 
+
+- tusb_config.h
+- usb_descriptors.c
+
+I added the headers to the /include/ directory, and source files to the /src/ directory as is the convention in platformIO.
+
+Furthermore I added:
+  
+- helper_functions.h
+- helper_functions.c
+
+It is of course possible to merge all the code in to a single file, but I will not do that.
+
+*** Helper functions
+
+For now the only helper function is related to the generation of a unique serial number for our USB device. These functions are to be found inside the tinyUSB library but I extracted them since I want to limit the use of platform specific functions from within the USB library.
+
+The header file is:
+
+#+BEGIN_SRC c
+#ifndef _HELPER_FUNCTIONS_H_
+#define _HELPER_FUNCTIONS_H_
+
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
+#include <string.h>
+#include <stdint.h>
+
+size_t stm32f103_get_unique_id(uint8_t id[], size_t max_len);
+
+// Get USB Serial number string from unique ID if available. Return number of character.
+// Input is string descriptor from index 1 (index 0 is type + len)
+static inline size_t stm32f103_usb_get_serial(uint16_t desc_str1[], size_t max_chars) {
+  uint8_t uid[16] TU_ATTR_ALIGNED(4);
+  size_t uid_len;
+
+  uid_len = stm32f103_get_unique_id(uid, sizeof(uid));
+
+  if ( uid_len > max_chars / 2 ) uid_len = max_chars / 2;
+
+  for ( size_t i = 0; i < uid_len; i++ ) {
+    for ( size_t j = 0; j < 2; j++ ) {
+      const char nibble_to_hex[16] = {
+          '0', '1', '2', '3', '4', '5', '6', '7',
+          '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'
+      };
+      uint8_t const nibble = (uid[i] >> (j * 4)) & 0xf;
+      desc_str1[i * 2 + (1 - j)] = nibble_to_hex[nibble]; // UTF-16-LE
+    }
+  }
+
+  return 2 * uid_len;
+}
+
+#ifdef __cplusplus
+ }
+#endif
+
+#endif /* _HELPER_FUNCTIONS_H_ */
+#+END_SRC
+
+The source file is:
+
+#+BEGIN_SRC c
+#include "tusb.h"
+#include "helper_functions.h"
+#include <string.h>
+#include <stdint.h>
+
+#include "stm32f103x6.h"
+
+size_t stm32f103_get_unique_id(uint8_t id[], size_t max_len) {
+  (void) max_len;
+  volatile uint32_t * stm32_uuid = (volatile uint32_t *) UID_BASE;
+  uint32_t* id32 = (uint32_t*) (uintptr_t) id;
+  uint8_t const len = 12;
+
+  id32[0] = stm32_uuid[0];
+  id32[1] = stm32_uuid[1];
+  id32[2] = stm32_uuid[2];
+
+  return len;
+}
+#+END_SRC
+
+
+*** tusb_config.h
+
+This file holds the project specific configuration of the tinyUSB library. The only change I made was to define the microcontroller I use, and that I wanted to use CDC class.
+
+#+BEGIN_SRC c
+#ifndef _TUSB_CONFIG_H_
+#define _TUSB_CONFIG_H_
+
+#ifdef __cplusplus
+ extern "C" {
+#endif
+
+//--------------------------------------------------------------------+
+// Board Specific Configuration
+//--------------------------------------------------------------------+
+
+// RHPort number used for device can be defined by board.mk, default to port 0
+#ifndef BOARD_TUD_RHPORT
+#define BOARD_TUD_RHPORT      0
+#endif
+
+// RHPort max operational speed can defined by board.mk
+#ifndef BOARD_TUD_MAX_SPEED
+#define BOARD_TUD_MAX_SPEED   OPT_MODE_DEFAULT_SPEED
+#endif
+
+//--------------------------------------------------------------------
+// Common Configuration
+//--------------------------------------------------------------------
+
+#define CFG_TUSB_MCU OPT_MCU_STM32F1
+
+// defined by compiler flags for flexibility
+#ifndef CFG_TUSB_MCU
+#error CFG_TUSB_MCU must be defined
+#endif
+
+#ifndef CFG_TUSB_OS
+#define CFG_TUSB_OS           OPT_OS_NONE
+#endif
+
+#ifndef CFG_TUSB_DEBUG
+#define CFG_TUSB_DEBUG        0
+#endif
+
+// Enable Device stack
+#define CFG_TUD_ENABLED       1
+
+// Default is max speed that hardware controller could support with on-chip PHY
+#define CFG_TUD_MAX_SPEED     BOARD_TUD_MAX_SPEED
+
+/* USB DMA on some MCUs can only access a specific SRAM region with restriction on alignment.
+ * Tinyusb use follows macros to declare transferring memory so that they can be put
+ * into those specific section.
+ * e.g
+ * - CFG_TUSB_MEM SECTION : __attribute__ (( section(".usb_ram") ))
+ * - CFG_TUSB_MEM_ALIGN   : __attribute__ ((aligned(4)))
+ */
+#ifndef CFG_TUSB_MEM_SECTION
+#define CFG_TUSB_MEM_SECTION
+#endif
+
+#ifndef CFG_TUSB_MEM_ALIGN
+#define CFG_TUSB_MEM_ALIGN    __attribute__ ((aligned(4)))
+#endif
+
+//--------------------------------------------------------------------
+// DEVICE CONFIGURATION
+//--------------------------------------------------------------------
+
+#ifndef CFG_TUD_ENDPOINT0_SIZE
+#define CFG_TUD_ENDPOINT0_SIZE   64
+#endif
+
+//------------- CLASS -------------//
+#define CFG_TUD_CDC              1
+#define CFG_TUD_MSC              0
+#define CFG_TUD_HID              0
+#define CFG_TUD_MIDI             0
+#define CFG_TUD_VENDOR           0
+
+#define CFG_TUD_CDC_NOTIFY        1 // Enable use of notification endpoint
+
+// CDC FIFO size of TX and RX
+#define CFG_TUD_CDC_RX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
+#define CFG_TUD_CDC_TX_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
+
+// CDC Endpoint transfer buffer size, more is faster
+#define CFG_TUD_CDC_EP_BUFSIZE   (TUD_OPT_HIGH_SPEED ? 512 : 64)
+
+#ifdef __cplusplus
+ }
+#endif
+
+#endif /* _TUSB_CONFIG_H_ */
+#+END_SRC
+
+
+
+*** USB decriptors
+
+The file /usb_decriptors.c/ configures the required USB descriptors that are sent to the host when the device is connected to the USB port. There is a lot of details to cover in this file.
+
+TODO: Write a step by step walkthrough of this file
+
+#+BEGIN_SRC c
+#include "tusb.h"
+#include "helper_functions.h"
+
+/* A combination of interfaces must have a unique product id, since PC will save device driver after the first plug.
+ * Same VID/PID with different interface e.g MSC (first), then CDC (later) will possibly cause system error on PC.
+ *
+ * Auto ProductID layout's Bitmap:
+ *   [MSB]         HID | MSC | CDC          [LSB]
+ */
+#define _PID_MAP(itf, n)  ( (CFG_TUD_##itf) << (n) )
+
+#define USB_PID           (0x4000 | _PID_MAP(CDC, 0) | _PID_MAP(MSC, 1) | _PID_MAP(HID, 2) | \
+                           _PID_MAP(MIDI, 3) | _PID_MAP(VENDOR, 4) )
+
+#define USB_VID   0xCafe
+
+// USB release number in BCD (binary coded decimal)
+#define USB_BCD   0x0200
+
+//--------------------------------------------------------------------+
+// Device Descriptors
+//--------------------------------------------------------------------+
+tusb_desc_device_t const desc_device = {
+    .bLength            = sizeof(tusb_desc_device_t),
+    .bDescriptorType    = TUSB_DESC_DEVICE,
+    .bcdUSB             = USB_BCD,
+
+    // Use Interface Association Descriptor (IAD) for CDC
+    // As required by USB Specs IAD's subclass must be common class (2) and protocol must be IAD (1)
+    .bDeviceClass       = TUSB_CLASS_MISC,
+    .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
+    .bDeviceProtocol    = MISC_PROTOCOL_IAD,
+    .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
+
+    .idVendor           = USB_VID,
+    .idProduct          = USB_PID,
+    .bcdDevice          = 0x0100,
+
+    .iManufacturer      = 0x01,
+    .iProduct           = 0x02,
+    .iSerialNumber      = 0x03,
+
+    .bNumConfigurations = 0x01
+};
+
+// Invoked when received GET DEVICE DESCRIPTOR
+// Application return pointer to descriptor
+uint8_t const *tud_descriptor_device_cb(void) {
+  return (uint8_t const *) &desc_device;
+}
+
+//--------------------------------------------------------------------+
+// Configuration Descriptor
+//--------------------------------------------------------------------+
+
+enum {
+  ITF_NUM_CDC = 0,
+  ITF_NUM_CDC_DATA,
+  ITF_NUM_MSC,
+  ITF_NUM_TOTAL
+};
+
+#if CFG_TUSB_MCU == OPT_MCU_LPC175X_6X || CFG_TUSB_MCU == OPT_MCU_LPC177X_8X || CFG_TUSB_MCU == OPT_MCU_LPC40XX
+  // LPC 17xx and 40xx endpoint type (bulk/interrupt/iso) are fixed by its number
+  // 0 control, 1 In, 2 Bulk, 3 Iso, 4 In, 5 Bulk etc ...
+  #define EPNUM_CDC_NOTIF   0x81
+  #define EPNUM_CDC_OUT     0x02
+  #define EPNUM_CDC_IN      0x82
+
+  #define EPNUM_MSC_OUT     0x05
+  #define EPNUM_MSC_IN      0x85
+
+#elif CFG_TUSB_MCU == OPT_MCU_CXD56
+  // CXD56 USB driver has fixed endpoint type (bulk/interrupt/iso) and direction (IN/OUT) by its number
+  // 0 control (IN/OUT), 1 Bulk (IN), 2 Bulk (OUT), 3 In (IN), 4 Bulk (IN), 5 Bulk (OUT), 6 In (IN)
+  #define EPNUM_CDC_NOTIF   0x83
+  #define EPNUM_CDC_OUT     0x02
+  #define EPNUM_CDC_IN      0x81
+
+  #define EPNUM_MSC_OUT     0x05
+  #define EPNUM_MSC_IN      0x84
+
+#elif defined(TUD_ENDPOINT_ONE_DIRECTION_ONLY)
+  // MCUs that don't support a same endpoint number with different direction IN and OUT defined in tusb_mcu.h
+  //    e.g EP1 OUT & EP1 IN cannot exist together
+  #define EPNUM_CDC_NOTIF   0x81
+  #define EPNUM_CDC_OUT     0x02
+  #define EPNUM_CDC_IN      0x83
+
+  #define EPNUM_MSC_OUT     0x04
+  #define EPNUM_MSC_IN      0x85
+
+#else
+  #define EPNUM_CDC_NOTIF   0x81
+  #define EPNUM_CDC_OUT     0x02
+  #define EPNUM_CDC_IN      0x82
+
+  #define EPNUM_MSC_OUT     0x03
+  #define EPNUM_MSC_IN      0x83
+
+#endif
+
+#define CONFIG_TOTAL_LEN    (TUD_CONFIG_DESC_LEN + TUD_CDC_DESC_LEN) // + TUD_MSC_DESC_LEN)
+
+// full speed configuration
+uint8_t const desc_fs_configuration[] = {
+    // Config number, interface count, string index, total length, attribute, power in mA
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
+
+    // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 16, EPNUM_CDC_OUT, EPNUM_CDC_IN, 64),
+};
+
+#if TUD_OPT_HIGH_SPEED
+// Per USB specs: high speed capable device must report device_qualifier and other_speed_configuration
+
+// high speed configuration
+uint8_t const desc_hs_configuration[] = {
+    // Config number, interface count, string index, total length, attribute, power in mA
+    TUD_CONFIG_DESCRIPTOR(1, ITF_NUM_TOTAL, 0, CONFIG_TOTAL_LEN, 0x00, 100),
+
+    // Interface number, string index, EP notification address and size, EP data address (out, in) and size.
+    TUD_CDC_DESCRIPTOR(ITF_NUM_CDC, 4, EPNUM_CDC_NOTIF, 16, EPNUM_CDC_OUT, EPNUM_CDC_IN, 512),
+};
+
+// other speed configuration
+uint8_t desc_other_speed_config[CONFIG_TOTAL_LEN];
+
+// device qualifier is mostly similar to device descriptor since we don't change configuration based on speed
+tusb_desc_device_qualifier_t const desc_device_qualifier = {
+    .bLength            = sizeof(tusb_desc_device_qualifier_t),
+    .bDescriptorType    = TUSB_DESC_DEVICE_QUALIFIER,
+    .bcdUSB             = USB_BCD,
+
+    .bDeviceClass       = TUSB_CLASS_MISC,
+    .bDeviceSubClass    = MISC_SUBCLASS_COMMON,
+    .bDeviceProtocol    = MISC_PROTOCOL_IAD,
+
+    .bMaxPacketSize0    = CFG_TUD_ENDPOINT0_SIZE,
+    .bNumConfigurations = 0x01,
+    .bReserved          = 0x00
+};
+
+// Invoked when received GET DEVICE QUALIFIER DESCRIPTOR request
+// Application return pointer to descriptor, whose contents must exist long enough for transfer to complete.
+// device_qualifier descriptor describes information about a high-speed capable device that would
+// change if the device were operating at the other speed. If not highspeed capable stall this request.
+uint8_t const *tud_descriptor_device_qualifier_cb(void) {
+  return (uint8_t const *) &desc_device_qualifier;
+}
+
+// Invoked when received GET OTHER SEED CONFIGURATION DESCRIPTOR request
+// Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
+// Configuration descriptor in the other speed e.g if high speed then this is for full speed and vice versa
+uint8_t const *tud_descriptor_other_speed_configuration_cb(uint8_t index) {
+  (void) index; // for multiple configurations
+
+  // if link speed is high return fullspeed config, and vice versa
+  // Note: the descriptor type is OHER_SPEED_CONFIG instead of CONFIG
+  memcpy(desc_other_speed_config,
+         (tud_speed_get() == TUSB_SPEED_HIGH) ? desc_fs_configuration : desc_hs_configuration,
+         CONFIG_TOTAL_LEN);
+
+  desc_other_speed_config[1] = TUSB_DESC_OTHER_SPEED_CONFIG;
+
+  return desc_other_speed_config;
+}
+
+#endif // highspeed
+
+// Invoked when received GET CONFIGURATION DESCRIPTOR
+// Application return pointer to descriptor
+// Descriptor contents must exist long enough for transfer to complete
+uint8_t const *tud_descriptor_configuration_cb(uint8_t index) {
+  (void) index; // for multiple configurations
+
+#if TUD_OPT_HIGH_SPEED
+  // Although we are highspeed, host may be fullspeed.
+  return (tud_speed_get() == TUSB_SPEED_HIGH) ? desc_hs_configuration : desc_fs_configuration;
+#else
+  return desc_fs_configuration;
+#endif
+}
+
+//--------------------------------------------------------------------+
+// String Descriptors
+//--------------------------------------------------------------------+
+
+// String Descriptor Index
+enum {
+  STRID_LANGID = 0,
+  STRID_MANUFACTURER,
+  STRID_PRODUCT,
+  STRID_SERIAL,
+};
+
+// array of pointer to string descriptors
+char const *string_desc_arr[] = {
+    (const char[]) { 0x09, 0x04 }, // 0: is supported language is English (0x0409)
+    "Eirik Haustveit",                       // 1: Manufacturer
+    "USB dingselur",              // 2: Product
+    NULL,                          // 3: Serials will use unique ID if possible
+    "dingsUSB CDC",                 // 4: CDC Interface
+    "dingsUSB MSC",                 // 5: MSC Interface
+};
+
+static uint16_t _desc_str[32 + 1];
+
+// Invoked when received GET STRING DESCRIPTOR request
+// Application return pointer to descriptor, whose contents must exist long enough for transfer to complete
+uint16_t const *tud_descriptor_string_cb(uint8_t index, uint16_t langid) {
+  (void) langid;
+  size_t chr_count;
+
+  switch ( index ) {
+    case STRID_LANGID:
+      memcpy(&_desc_str[1], string_desc_arr[0], 2);
+      chr_count = 1;
+      break;
+
+    case STRID_SERIAL:
+      chr_count = stm32f103_usb_get_serial(_desc_str + 1, 32);
+      break;
+
+    default:
+      // Note: the 0xEE index string is a Microsoft OS 1.0 Descriptors.
+      // https://docs.microsoft.com/en-us/windows-hardware/drivers/usbcon/microsoft-defined-usb-descriptors
+
+      if ( !(index < sizeof(string_desc_arr) / sizeof(string_desc_arr[0])) ) { return NULL; }
+
+      const char *str = string_desc_arr[index];
+
+      // Cap at max char
+      chr_count = strlen(str);
+      size_t const max_count = sizeof(_desc_str) / sizeof(_desc_str[0]) - 1; // -1 for string type
+      if ( chr_count > max_count ) { chr_count = max_count; }
+
+      // Convert ASCII string into UTF-16
+      for ( size_t i = 0; i < chr_count; i++ ) {
+        _desc_str[1 + i] = str[i];
+      }
+      break;
+  }
+
+  // first byte is length (including header), second byte is string type
+  _desc_str[0] = (uint16_t) ((TUSB_DESC_STRING << 8) | (2 * chr_count + 2));
+  return _desc_str;
+}
+#+END_SRC
+
+
+*** main.c
+
+/main.c/ source file. Here I have adapted the blink example from before to include the required I/O configuration, callbacks, and interrupt service routines for tinyUSB.
+
+The most interesting things happens in the /cdc_task()/ function where the data received on the USB serial port interface is echoed back, but also included in the echo is the number of bytes received.
+
+
+#+BEGIN_SRC c
+  #include <stm32f1xx_ll_gpio.h>
+
+  #include <stm32f1xx_ll_cortex.h>
+  #include <stm32f1xx_ll_rcc.h>
+  #include <stm32f1xx_ll_bus.h>
+  #include <stm32f1xx_ll_usb.h>
+
+  #include <tusb.h>
+  #include "tusb_config.h"
+
+  #include <string.h>
+  #include <stdio.h>
+
+  #define BUILTIN_LED_PORT          GPIOC
+  #define BUILTIN_LED_PIN           LL_GPIO_PIN_13
+
+  void cdc_task(void);
+
+
+  static uint_fast32_t counter = 0;
+  void SysTick_Handler(void)
+  {
+      counter++;
+
+      // blinking
+      if ((counter % 1500) == 0)
+          LL_GPIO_TogglePin(BUILTIN_LED_PORT, BUILTIN_LED_PIN);
+
+  }
+
+  void init_clock(){
+      RCC_ClkInitTypeDef clkinitstruct = {0};
+      RCC_OscInitTypeDef oscinitstruct = {0};
+      RCC_PeriphCLKInitTypeDef rccperiphclkinit = {0};
+
+      // TODO: Rewrite this to use LL library
+      
+      /* Enable HSE Oscillator and activate PLL with HSE as source */
+      oscinitstruct.OscillatorType  = RCC_OSCILLATORTYPE_HSE;
+      oscinitstruct.HSEState        = RCC_HSE_ON;
+      oscinitstruct.HSEPredivValue  = RCC_HSE_PREDIV_DIV1;
+      oscinitstruct.PLL.PLLMUL      = RCC_PLL_MUL9;
+      oscinitstruct.PLL.PLLState    = RCC_PLL_ON;
+      oscinitstruct.PLL.PLLSource   = RCC_PLLSOURCE_HSE;
+      HAL_RCC_OscConfig(&oscinitstruct);
+
+      /* USB clock selection */
+      rccperiphclkinit.PeriphClockSelection = RCC_PERIPHCLK_USB;
+      rccperiphclkinit.UsbClockSelection = RCC_USBCLKSOURCE_PLL_DIV1_5;
+      HAL_RCCEx_PeriphCLKConfig(&rccperiphclkinit);
+
+      /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2 clocks dividers */
+      clkinitstruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+      clkinitstruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+      clkinitstruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+      clkinitstruct.APB1CLKDivider = RCC_HCLK_DIV2;
+      clkinitstruct.APB2CLKDivider = RCC_HCLK_DIV1;
+      HAL_RCC_ClockConfig(&clkinitstruct, FLASH_LATENCY_2);
+  }
+
+  void init_gpio() {
+
+      //LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOA);
+
+      //LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_GPIOB);
+      LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOC);
+
+      LL_GPIO_SetPinMode(BUILTIN_LED_PORT, BUILTIN_LED_PIN, LL_GPIO_MODE_OUTPUT);
+
+      LL_GPIO_SetPinOutputType(BUILTIN_LED_PORT, BUILTIN_LED_PIN, LL_GPIO_OUTPUT_PUSHPULL);
+
+      LL_GPIO_SetOutputPin(BUILTIN_LED_PORT, BUILTIN_LED_PIN);
+  }
+
+  void init_usb(){
+
+      LL_APB2_GRP1_EnableClock(LL_APB2_GRP1_PERIPH_GPIOA);
+
+      LL_GPIO_SetPinMode(GPIOA, GPIO_PIN_11, LL_GPIO_MODE_ALTERNATE);
+      LL_GPIO_SetPinMode(GPIOA, GPIO_PIN_12, LL_GPIO_MODE_ALTERNATE);
+
+      LL_GPIO_SetPinOutputType(GPIOA, GPIO_PIN_11, LL_GPIO_OUTPUT_PUSHPULL);
+      LL_GPIO_SetPinOutputType(GPIOA, GPIO_PIN_12, LL_GPIO_OUTPUT_PUSHPULL);
+
+      LL_GPIO_SetPinSpeed(GPIOA, GPIO_PIN_11, LL_GPIO_SPEED_FREQ_HIGH);
+      LL_GPIO_SetPinSpeed(GPIOA, GPIO_PIN_12, LL_GPIO_SPEED_FREQ_HIGH);
+
+
+      LL_APB1_GRP1_EnableClock(LL_APB1_GRP1_PERIPH_USB);
+
+  }
+
+  int main(void) {
+
+      init_clock();
+
+      init_gpio();
+
+      // 1kHz ticks
+      SystemCoreClockUpdate();
+      SysTick_Config(SystemCoreClock / 1000);
+
+      init_usb();
+
+      // init device stack on configured roothub port
+      tusb_rhport_init_t dev_init = {
+        .role = TUSB_ROLE_DEVICE,
+        .speed = TUSB_SPEED_AUTO
+      };
+      tusb_init(BOARD_TUD_RHPORT, &dev_init);
+
+
+      while (1) {
+          tud_task(); // tinyusb device task
+
+          cdc_task();
+      }
+
+      return 0;
+  }
+
+
+  //--------------------------------------------------------------------+
+  // Device callbacks
+  //--------------------------------------------------------------------+
+
+  // Invoked when device is mounted
+  void tud_mount_cb(void) {
+  }
+
+  // Invoked when device is unmounted
+  void tud_umount_cb(void) {
+  }
+
+  // Invoked when usb bus is suspended
+  // remote_wakeup_en : if host allow us  to perform remote wakeup
+  // Within 7ms, device must draw an average of current less than 2.5 mA from bus
+  void tud_suspend_cb(bool remote_wakeup_en) {
+    (void) remote_wakeup_en;
+  }
+
+  // Invoked when usb bus is resumed
+  void tud_resume_cb(void) {
+  }
+
+
+  //--------------------------------------------------------------------+
+  // USB CDC
+  //--------------------------------------------------------------------+
+  void cdc_task(void) {
+    // connected() check for DTR bit
+    // Most but not all terminal client set this when making connection
+    // if ( tud_cdc_connected() )
+    {
+      // connected and there are data available
+      if (tud_cdc_available()) {
+        // read data
+        char buf[64];
+        uint32_t count = tud_cdc_read(buf, sizeof(buf));
+        //(void) count;
+
+        // Echo back
+        // Note: Skip echo by commenting out write() and write_flush()
+        // for throughput test e.g
+        //    $ dd if=/dev/zero of=/dev/ttyACM0 count=10000
+
+        char message_buf[22];
+
+        // Send the length of the received data back to the sender
+        snprintf(message_buf, sizeof(message_buf), "Length: %li\r\n", count);
+        tud_cdc_write(message_buf, strlen(message_buf));
+
+        tud_cdc_write(buf, count);
+        tud_cdc_write_flush();
+      }
+
+      // Press on-board button to send Uart status notification
+      static uint32_t btn_prev = 0;
+      static cdc_notify_uart_state_t uart_state = { .value = 0 };
+      const uint32_t btn = 0; //board_button_read();
+      if (!btn_prev && btn) {
+        uart_state.dsr ^= 1;
+        tud_cdc_notify_uart_state(&uart_state);
+      }
+      btn_prev = btn;
+    }
+  }
+
+  // Invoked when cdc when line state changed e.g connected/disconnected
+  void tud_cdc_line_state_cb(uint8_t itf, bool dtr, bool rts) {
+    (void) itf;
+    (void) rts;
+
+    // TODO set some indicator
+    if (dtr) {
+      // Terminal connected
+    } else {
+      // Terminal disconnected
+    }
+  }
+
+  // Invoked when CDC interface received data from host
+  void tud_cdc_rx_cb(uint8_t itf) {
+    (void) itf;
+  }
+
+  //--------------------------------------------------------------------+
+  // Forward USB interrupt events to TinyUSB IRQ Handler
+  //--------------------------------------------------------------------+
+  void USB_HP_IRQHandler(void) {
+    tud_int_handler(0);
+  }
+
+  void USB_LP_IRQHandler(void) {
+    tud_int_handler(0);
+  }
+
+  void USBWakeUp_IRQHandler(void) {
+    tud_int_handler(0);
+  }
+#+END_SRC
+
+
+
+
+*** Testing
+
+After flashing of the microcontroller /dmesg/ gives the following output:
+
+#+BEGIN_SRC console
+$ sudo dmesg | tail -n 8
+[sudo] password for eirik:
+[24151.861921] usb 5-2.3.3: new full-speed USB device number 65 using xhci_hcd
+[24151.953663] usb 5-2.3.3: config 1 has 2 interfaces, different from the descriptor's value: 3
+[24151.954623] usb 5-2.3.3: New USB device found, idVendor=cafe, idProduct=4001, bcdDevice= 1.00
+[24151.954633] usb 5-2.3.3: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[24151.954638] usb 5-2.3.3: Product: USB dingselur
+[24151.954643] usb 5-2.3.3: Manufacturer: Eirik Haustveit
+[24151.954647] usb 5-2.3.3: SerialNumber: 32FFDC054D58313642631943
+[24151.970098] cdc_acm 5-2.3.3:1.0: ttyACM1: USB ACM device
+#+END_SRC
+
+/lsusb/ also provides some information:
+
+#+BEGIN_SRC console
+$ lsusb
+Bus 001 Device 001: ID 1d6b:0002 Linux Foundation 2.0 root hub
+...
+Bus 005 Device 065: ID cafe:4001 Eirik Haustveit USB dingselur
+...
+#+END_SRC
+
+My slightly silly echo application with length indication yields the following when typing "test" in to the console:
+
+#+BEGIN_SRC console
+$ picocom -b 115200 /dev/ttyACM1
+picocom v3.1
+
+port is        : /dev/ttyACM1
+flowcontrol    : none
+baudrate is    : 115200
+parity is      : none
+databits are   : 8
+stopbits are   : 1
+escape is      : C-a
+local echo is  : no
+noinit is      : no
+noreset is     : no
+hangup is      : no
+nolock is      : no
+send_cmd is    : sz -vv
+receive_cmd is : rz -vv -E
+imap is        : 
+omap is        : 
+emap is        : crcrlf,delbs,
+logfile is     : none
+initstring     : none
+exit_after is  : not set
+exit is        : no
+
+Type [C-a] [C-h] to see available commands
+Terminal ready
+Length: 1
+tLength: 1
+eLength: 1
+sLength: 1
+t
+#+END_SRC
+
