@@ -895,7 +895,7 @@ Hence we subtract the offset, multiply the logarithm by 0.5, and subtract the re
 
 ** Computation of sine and cosine
 
-* DONE tinyUSB CDC UART interface                           :tag1:@category1:
+* DONE tinyUSB CDC UART interface                           :usb:@microcontroller:
 CLOSED: [2025-09-27 la. 21:42]
 :PROPERTIES:
 :EXPORT_FILE_NAME: tinyusb-cdc
@@ -908,6 +908,8 @@ The STM32f103C6 might not be powerfull enough for audio (time will show), but I 
 I will use the tinyUSB (https://github.com/hathach/tinyusb) library, which is a USB host and device stack for microcontrollers and other embedded systems. The documentation for the library is a bit deficient in my opinion, but there are a lot of good project examples in the repository.
 
 It is possible to run the example projects directly from within the repository. Although this can be nice if one wants to get up and running as quickly as possible, it obscures the details required to configure tinyUSB for a custom project.
+
+Most of the code in this article is copied and slightly modified from the examples in the tinyUSB respository.
 
 ** Project configuration and initial tests
 
@@ -1753,9 +1755,79 @@ t
 
 
 
-* TODO DALI bus interface                                   :tag1:@category1:
+* TODO tinyUSB MSC as interface                        :bus:@microcontroller:
+:PROPERTIES:
+:EXPORT_FILE_NAME: tinyusb-msc-as-interface
+:END:
+
+In this article I will discuss how to implement a USB mass storage device class (USB MSC) on a STM32f103c6, and how to use the files provided in the storage for controlling some hardware.
+
+** Project setup
+
+** File system
+
+
+* TODO DALI bus interface                                   :bus:@microcontroller:
 :PROPERTIES:
 :EXPORT_FILE_NAME: dali-bus-interface
 :END:
 
 Digital Addressable Lighting Interface (DALI)
+
+
+* TODO lwIP ethernet                                   :ethernet:@microcontroller:
+:PROPERTIES:
+:EXPORT_FILE_NAME: lwip-ethernet
+:END:
+
+In this article I attempt to document how to add lwip and ethernet to a STM32F767ZI project. As always I will not be using (the shitty) STM32CubeIDE or HAL.
+
+https://www.nongnu.org/lwip/2_1_x/index.html
+
+** Integrating baremetal lwip with the ethernet MAC driver
+
+https://lwip.fandom.com/wiki/Guide:_integrating_baremetal_lwip_2.2_on_a_Cortex_M
+
+** UDP and TCP echo example
+
+
+
+** Integrating a RTOS (QPC) and lwip with the ethernet MAC driver
+
+
+** Adding a simple HTTP server
+
+
+* TODO Piezo contact microphone amplifier                   :amplifier:@analog:
+:PROPERTIES:
+:EXPORT_FILE_NAME: piezo-contact-microphone-amplifier
+:END:
+
+I was asked if I could help design a preamplifier for some piezoelectric contact microphones to be used in a project involving a Daisy Seed (https://electro-smith.com/) sound processing microcontroller. The software engineers involved in the project had previosly attempted to use some kind of microphone preamplifier, but the results where not satisfactory. In particular they stated the low frequency (bass) responce to be insufficient.
+
+The specific microphones they had tested were:
+
+- Generic piezo cheramic
+- Peterson TP-3 Clip-On Tuning Pickup
+- Korg CM300-BK
+
+Piezo microphones are capacitive. A simple equivalent circuit is a vibration dependend voltage source in series with a capacitor. This means that they exhibit a high impedance at low frequencies which rolls of as the frequency increases. For this reason the low frequency response will typically be incufficient if used with a normal microphone input. Unfortunately it was not easy to find proper datasheets for the microphones in question, so I made some rudimentary measurements just to get an idea of how they behaved.
+
+TODO: add measurement results.
+
+Amplifiers with high imput impedance is problematic as they will easily pick up any hum from electric fields that exists in the environment. For this reason long cables between the microphone and the preamp should be avoided.
+
+** First prototype, using a bootstrap circuit to increase input impedance.
+
+Resistors of really high values (>> 10 MΩ) are hard to obtain, and also suffer from surface lekage. The bootstrap technique allows us to increase the input impedance while avoiding these really high resistor values. That is not to say that the bootstrap technique is problem free, it can still suffer from hum.
+
+The existing circuit where the amplifier is needed only provides 3.3 V and 5 V single ended supplies, and it is preferable to avoid having to design an additional power supply. The Daisy datasheet specifies a maximum audio input voltage of +/- 1.8 V. The only JFET input operational amplifiers I had on hand where TL071 from ST which requires at least 6 V power supply according to the datasheet. Still I decided to use these amplifiers for inital tests, and then later upgrade to something more suitable.
+
+*** Circuit
+
+
+*** Frequency responce
+
+*** Noise measurements
+
+** Second prototype, using a charge amplifier
